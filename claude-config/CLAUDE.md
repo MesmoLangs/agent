@@ -6,6 +6,14 @@ Never put any comments in the code. Use descriptive variable or function names i
 Never leave any console.log, console.error, console.info, or console.warn statements in the code.
 Never use hardcoded values. Always use enums and constants. Before defining a new constant, search the codebase for existing ones that match.
 
+## Git — Always Pull Before Starting Work
+
+Before starting any new feature, fix, refactor, or task, always pull latest changes from the remote:
+```bash
+git pull
+```
+Do this before making any code changes. If the pull fails due to local changes, notify the user and do not proceed until resolved.
+
 ## Agent Behavior
 
 You are running inside a Docker container with full git and SSH access to GitHub.
