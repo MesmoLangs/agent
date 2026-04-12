@@ -7,7 +7,7 @@ echo "════════════════════════�
 
 # ── 1. SSH key setup ──────────────────────────────────────────────────────────
 echo ""
-echo "── [1/5] Setting up SSH keys ──"
+echo "── [1/6] Setting up SSH keys ──"
 mkdir -p /root/.ssh /home/agent/.ssh
 rm -rf /home/agent/.ssh/.ssh 2>/dev/null || true
 chmod 600 /root/.ssh/id_rsa 2>/dev/null || true
@@ -16,7 +16,7 @@ echo "✅ SSH keys configured for root"
 
 # ── 2. Import host settings ──────────────────────────────────────────────────
 echo ""
-echo "── [2/5] Importing host settings ──"
+echo "── [2/6] Importing host settings ──"
 
 if [ -f /host-settings/.gitconfig ]; then
     cp /host-settings/.gitconfig /root/.gitconfig
@@ -50,7 +50,7 @@ echo "✅ Host settings imported"
 
 # ── 3. Agent user permissions ─────────────────────────────────────────────────
 echo ""
-echo "── [3/5] Configuring agent user permissions ──"
+echo "── [3/6] Configuring agent user permissions ──"
 chown -R agent:agent /workspace
 chown -R agent:agent /home/agent/.claude 2>/dev/null || true
 cp /root/.ssh/id_rsa /home/agent/.ssh/id_rsa 2>/dev/null || true
@@ -61,9 +61,35 @@ chown -R agent:agent /home/agent/.ssh
 su - agent -c "git config --global --add safe.directory /workspace"
 echo "✅ Agent user permissions set"
 
-# ── 4. Pre-configure Claude Code onboarding ───────────────────────────────────
+# ── 4. Clone / pull Git repos ─────────────────────────────────────────────────
 echo ""
-echo "── [4/5] Pre-configuring Claude Code onboarding ──"
+echo "── [4/6] Initializing Git repositories ──"
+
+if [ -n "${GIT_REPOS:-}" ]; then
+    IFS=',' read -ra REPOS <<< "$GIT_REPOS"
+    for REPO_URL in "${REPOS[@]}"; do
+        REPO_URL=$(echo "$REPO_URL" | xargs)
+        REPO_NAME=$(basename "$REPO_URL" .git)
+        REPO_DIR="/workspace/$REPO_NAME"
+
+        if [ -d "$REPO_DIR/.git" ]; then
+            echo "  Pulling latest for $REPO_NAME..."
+            git -C "$REPO_DIR" pull --ff-only 2>&1 | sed 's/^/    /'
+        else
+            echo "  Cloning $REPO_NAME..."
+            git clone "$REPO_URL" "$REPO_DIR" 2>&1 | sed 's/^/    /'
+        fi
+        git config --global --add safe.directory "$REPO_DIR"
+    done
+    chown -R agent:agent /workspace
+    echo "✅ Git repositories initialized"
+else
+    echo "  GIT_REPOS not set, skipping"
+fi
+
+# ── 5. Pre-configure Claude Code onboarding ───────────────────────────────────
+echo ""
+echo "── [5/6] Pre-configuring Claude Code onboarding ──"
 
 if [ ! -f /home/agent/.claude/settings.json ]; then
     su - agent -c 'mkdir -p ~/.claude && echo "{\"theme\": \"dark\"}" > ~/.claude/settings.json'
@@ -119,9 +145,9 @@ os.chown(cfg_path, $(id -u agent), $(id -g agent))
     echo "✅ Workspace trust flags set in imported .claude.json"
 fi
 
-# ── 5. Launch Go Telegram bot ────────────────────────────────────────────────
+# ── 6. Launch Go Telegram bot ────────────────────────────────────────────────
 echo ""
-echo "── [5/5] Launching Telegram bot ──"
+echo "── [6/6] Launching Telegram bot ──"
 
 TELEGRAM_TOKEN_VAL="${TELEGRAM_TOKEN:-}"
 if [ -z "$TELEGRAM_TOKEN_VAL" ]; then
