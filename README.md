@@ -1,6 +1,6 @@
 # Claude Telegram Agent
 
-A Telegram bot that wraps the Claude Code CLI inside Docker. Send a message, Claude implements it, code gets pushed to GitHub.
+A repo-agnostic Telegram bot that wraps the Claude Code CLI inside Docker. Send a message, Claude clones the repo it needs, implements changes, and pushes to GitHub.
 
 ```
 You (Telegram) → Go Bot (Docker) → Claude Code CLI (Bedrock) → git push → GitHub
@@ -13,26 +13,24 @@ You (Telegram) → Go Bot (Docker) → Claude Code CLI (Bedrock) → git push �
 │  Docker Container (Ubuntu 22.04)                 │
 │                                                  │
 │  entrypoint.sh                                   │
-│    ├── configure git identity & SSH keys         │
-│    ├── clone or pull the target repo → /workspace│
-│    ├── copy CLAUDE.md + custom commands          │
-│    ├── pre-configure Claude Code onboarding      │
-│    └── launch claude-bot as non-root user        │
+│    ├── configure SSH keys for GitHub access       │
+│    ├── import host git & Claude settings          │
+│    ├── pre-configure Claude Code onboarding       │
+│    └── launch claude-bot as non-root user         │
 │                                                  │
 │  claude-bot (Go binary)                          │
 │    ├── long-polls Telegram for updates           │
 │    ├── registers bot commands via SetMyCommands   │
 │    ├── filters messages by ALLOWED_CHAT_ID       │
 │    ├── sends typing indicator while processing   │
-│    ├── shells out: claude -p --dangerously-skip- │
-│    │   permissions [--continue] "<prompt>"       │
-│    ├── maintains session continuity (--continue) │
+│    ├── runs claude in stream-json mode           │
+│    ├── maintains session continuity              │
 │    ├── logs full request, response, and stderr   │
 │    └── splits long replies into 4000-char chunks │
 │                                                  │
 │  /workspace (mounted volume)                     │
-│    ├── CLAUDE.md          (project conventions)  │
-│    └── .claude/commands/  (custom slash commands) │
+│    └── Claude clones repos here on demand        │
+│        Uses project's own CLAUDE.md & commands   │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -69,23 +67,13 @@ Hidden aliases that also work: `/reset`, `/clear`
 
 ## Claude Code Integration
 
-The bot runs Claude Code CLI as a subprocess. Claude operates on `/workspace` which contains the cloned target repo.
+The bot runs Claude Code CLI as a persistent subprocess in stream-json mode. Claude operates on `/workspace` which starts empty — Claude clones repos as needed.
 
-Claude reads:
+Claude reads the project's own instructions:
 - **`CLAUDE.md`** — project conventions, coding rules, structure
-- **`.claude/commands/`** — custom slash commands you can reference in prompts
+- **`.claude/commands/`** — custom slash commands
 
-### Custom Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/project:plan` | Investigate codebase and produce implementation plan |
-| `/project:implement-server` | Scaffold a Go server feature |
-| `/project:implement-app` | Scaffold a Flutter feature |
-| `/project:feature-workflow` | Full cycle: plan → server → app → review |
-| `/project:review` | Code review with severity-classified findings |
-| `/project:commit` | Generate a conventional commit message |
-| `/project:summarize` | Summarize what changed |
+A fallback `CLAUDE.md` is baked into the image with generic coding rules and conventional commit format.
 
 ## Setup
 
@@ -95,23 +83,30 @@ Claude reads:
 |----------|----------|-------------|
 | `TELEGRAM_TOKEN` | Yes | Telegram Bot API token from @BotFather |
 | `ALLOWED_CHAT_ID` | Yes | Comma-separated Telegram chat IDs allowed to use the bot |
-| `GITHUB_REPO` | Yes | SSH clone URL (e.g. `git@github.com:user/repo.git`) |
-| `GIT_EMAIL` | Yes | Git commit email |
-| `GIT_NAME` | No | Git commit name (default: `Claude Agent`) |
-| `BASE_BRANCH` | No | Branch to work from (default: `main`) |
 | `CLAUDE_CODE_USE_BEDROCK` | Yes | Set to `1` for AWS Bedrock |
 | `AWS_ACCESS_KEY_ID` | Yes | AWS credentials for Bedrock |
 | `AWS_SECRET_ACCESS_KEY` | Yes | AWS credentials for Bedrock |
 | `AWS_REGION` | No | AWS region (default: `us-east-1`) |
 | `ANTHROPIC_MODEL` | Yes | Bedrock inference profile ID |
+| `CONTAINER_NAME` | No | Docker container name (default: `claude-agent`) |
+| `VOLUME_PREFIX` | No | Prefix for named volumes (default: `agent`) |
+
+### Host Mounts
+
+The container imports your local settings (read-only):
+
+| Host Path | Container Path | Purpose |
+|-----------|---------------|---------|
+| `~/.ssh/github` | `/root/.ssh/id_rsa` | SSH key for GitHub access |
+| `~/.gitconfig` | `/host-settings/.gitconfig` | Git identity (name, email) |
+| `~/.claude.json` | `/host-settings/.claude.json` | Claude global config (onboarding, API) |
+| `~/.claude/settings.json` | `/host-settings/claude-settings.json` | Claude settings (theme, permissions) |
 
 ### Running
 
 ```bash
-# Create .env with your variables, then:
 docker compose up -d
 
-# View logs (includes Claude's full responses)
 docker compose logs -f
 ```
 
@@ -119,19 +114,17 @@ docker compose logs -f
 
 | Volume | Path | Purpose |
 |--------|------|---------|
-| `workspace` | `/workspace` | Cloned repo, persisted across restarts |
-| `claude-memory` | `/home/agent/.claude` | Claude Code session data and settings |
-| SSH key | `~/.ssh/github` → `/root/.ssh/id_rsa` | Read-only mount for GitHub access |
+| `{VOLUME_PREFIX}-workspace` | `/workspace` | Working directory, persisted across restarts |
+| `{VOLUME_PREFIX}-claude-memory` | `/home/agent/.claude` | Claude Code session data and settings |
 
 ## Usage Examples
 
 ```
-Fix the typo in the login screen title
+Clone git@github.com:user/repo.git and fix the typo in the login screen title
 ```
 ```
 Add a new endpoint GET /api/health that returns server version and uptime
 ```
-```
-/project:feature-workflow Add word streak tracking — server endpoint and Flutter UI
-```
-- The SSH key in `.env` only has access to repos you explicitly added it to
+
+- The SSH key only has access to repos you explicitly added it to
+- Claude uses the cloned project's own CLAUDE.md and .claude/commands/ for repo-specific conventions

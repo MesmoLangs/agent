@@ -1,7 +1,7 @@
 services:
-  tutor-claude-agent:
+  agent:
     build: .
-    container_name: claude-agent
+    container_name: ${CONTAINER_NAME:-claude-agent}
     restart: unless-stopped
     stdin_open: true
     tty: true
@@ -11,28 +11,26 @@ services:
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - ALLOWED_CHAT_ID=${ALLOWED_CHAT_ID}
 
-      # ── GitHub ────────────────────────────────────────────────────────────
-      - GITHUB_REPO=${GITHUB_REPO}           # e.g. git@github.com:you/repo.git
-      - GIT_EMAIL=${GIT_EMAIL}
-      - GIT_NAME=${GIT_NAME:-Claude Agent}
-      - BASE_BRANCH=${BASE_BRANCH:-main}
-
       # ── AWS Bedrock (for Claude Code) ─────────────────────────────────────
       - CLAUDE_CODE_USE_BEDROCK=1
       - CLAUDE_CODE_SANDBOXED=1
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION:-us-east-1}
-      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL}   # your Bedrock inference profile ID
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL}
 
-    # Persist the cloned repo between container restarts
     volumes:
-      - t-workspace:/workspace
-      - t-claude-memory:/home/agent/.claude
+      - workspace:/workspace
+      - claude-memory:/home/agent/.claude
       - ~/.ssh/github:/root/.ssh/id_rsa:ro
+      - ~/.gitconfig:/host-settings/.gitconfig:ro
+      - ~/.claude.json:/host-settings/.claude.json:ro
+      - ~/.claude/settings.json:/host-settings/claude-settings.json:ro
 
     # No ports needed — bot uses outbound polling only
 
 volumes:
-  t-workspace:
-  t-claude-memory:
+  workspace:
+    name: ${VOLUME_PREFIX:-agent}-workspace
+  claude-memory:
+    name: ${VOLUME_PREFIX:-agent}-claude-memory

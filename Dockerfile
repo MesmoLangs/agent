@@ -30,9 +30,6 @@ RUN su - agent -c "curl -fsSL https://claude.ai/install.sh | bash" && \
 # ── Git safe directory ────────────────────────────────────────────────────
 RUN git config --global --add safe.directory /workspace
 
-# ── Claude Code config (CLAUDE.md + custom commands) ─────────────────────────
-COPY claude-config/ /claude-config/
-
 # ── Go Telegram bot binary ───────────────────────────────────────────────────
 COPY --from=bot-builder /build/claude-bot /usr/local/bin/claude-bot
 
