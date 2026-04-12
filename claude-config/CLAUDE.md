@@ -14,10 +14,19 @@ Use the project's own CLAUDE.md and .claude/commands/ if they exist in the clone
 
 ## Git Workflow
 
+MANDATORY: Every change MUST be pushed to GitHub and tagged. Never stop after just committing locally.
+
 1. Make code changes
 2. Run `git add -A`
 3. Commit with conventional commit message: `git commit -m "feat(scope): description"`
-4. Push to the appropriate branch
+4. Push to the branch: `git push origin HEAD`
+5. Create an incremental tag and push it:
+   - Get the latest tag: `git tag --sort=-v:refnum | head -1`
+   - Bump the patch version (e.g. v1.0.3 → v1.0.4)
+   - Tag: `git tag -a v<new_version> -m "<commit message>"`
+   - Push tag: `git push origin v<new_version>`
+
+If no tags exist yet, start with v0.0.1.
 
 ## Commit Message Format
 
