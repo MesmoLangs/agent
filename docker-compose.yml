@@ -1,7 +1,7 @@
 services:
   agent:
     build: .
-    container_name: ${CONTAINER_NAME:-claude-agent}
+    container_name: ${AGENT_NAME:-claude-agent}
     restart: unless-stopped
     stdin_open: true
     tty: true
@@ -31,6 +31,6 @@ services:
 
 volumes:
   workspace:
-    name: ${VOLUME_PREFIX:-agent}-workspace
+    name: ${AGENT_NAME:-claude-agent}-workspace
   claude-memory:
-    name: ${VOLUME_PREFIX:-agent}-claude-memory
+    name: ${AGENT_NAME:-claude-agent}-claude-memory
