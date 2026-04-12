@@ -25,8 +25,14 @@ MANDATORY: Every change MUST be pushed to GitHub and tagged. Never stop after ju
    - Bump the patch version (e.g. v1.0.3 → v1.0.4)
    - Tag: `git tag -a v<new_version> -m "<commit message>"`
    - Push tag: `git push origin v<new_version>`
+6. Output the commit link so the user receives it in Telegram:
+   - Get the full SHA: `git rev-parse HEAD`
+   - Get the remote URL: `git remote get-url origin`
+   - Extract owner/repo from the SSH URL (e.g. git@github.com:owner/repo.git → owner/repo)
+   - Print: `https://github/<owner>/<repo>/commit/<FULL_SHA>`
 
 If no tags exist yet, start with v0.0.1.
+NEVER skip steps 4-6. The user MUST receive the push confirmation with a clickable commit link.
 
 ## Commit Message Format
 
