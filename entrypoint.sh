@@ -29,14 +29,29 @@ fi
 
 git config --global --add safe.directory /workspace
 
+su - agent -c 'mkdir -p ~/.claude'
 if [ -f /host-settings/claude-settings.json ]; then
-    su - agent -c 'mkdir -p ~/.claude'
     cp /host-settings/claude-settings.json /home/agent/.claude/settings.json
-    chown agent:agent /home/agent/.claude/settings.json
     echo "  Imported host Claude settings.json"
 else
-    echo "  No host Claude settings.json found, skipping"
+    echo "  No host Claude settings.json found, creating default"
+    echo '{}' > /home/agent/.claude/settings.json
 fi
+
+python3 -c "
+import json
+p = '/home/agent/.claude/settings.json'
+with open(p) as f: d = json.load(f)
+perms = d.setdefault('permissions', {})
+allow = set(perms.get('allow', []))
+allow.add('Edit(.claude/**)')
+allow.add('Edit(CLAUDE.md)')
+perms['allow'] = sorted(allow)
+d['skipDangerousModePermissionPrompt'] = True
+with open(p, 'w') as f: json.dump(d, f, indent=2)
+"
+chown agent:agent /home/agent/.claude/settings.json
+echo "  Ensured full permissions for sensitive files"
 
 if [ -f /host-settings/.claude.json ]; then
     cp /host-settings/.claude.json /home/agent/.claude.json
