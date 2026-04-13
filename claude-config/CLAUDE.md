@@ -51,6 +51,12 @@ MANDATORY: Every change MUST be committed and pushed to `main` on GitHub. Never 
 NEVER skip steps 6-7. The user MUST receive the push confirmation with a clickable commit link in Telegram.
 NEVER push to any branch other than `main`.
 
+## Telegram Output Rules
+
+NEVER send raw code, diffs, file contents, or code snippets in Telegram messages.
+ALWAYS send ONLY the GitHub commit link so the user can review changes on GitHub.
+Keep Telegram messages short: commit link + question about tagging. Nothing else.
+
 ## Commit Message Format
 
 Use Conventional Commits: `<type>(<scope>): <description>`
