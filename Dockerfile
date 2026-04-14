@@ -21,7 +21,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 
 # ── Non-root user (Claude CLI refuses root) ──────────────────────────────────
 RUN useradd -m -s /bin/bash agent && \
-    mkdir -p /workspace /home/agent/.ssh
+    mkdir -p /workspace /home/agent/.ssh && \
+    echo 'agent ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # ── Claude Code CLI ──────────────────────────────────────────────────────────
 RUN su - agent -c "curl -fsSL https://claude.ai/install.sh | bash" && \
