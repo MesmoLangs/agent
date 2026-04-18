@@ -24,6 +24,11 @@ services:
       # ── GitHub CLI ────────────────────────────────────────────────────────
       - GH_TOKEN=${GH_TOKEN}
 
+      # ── Slack (optional) ──────────────────────────────────────────────────
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
+      - SLACK_CHANNEL_ID=${SLACK_CHANNEL_ID:-}
+
     volumes:
       - workspace:/workspace
       - claude-memory:/home/agent/.claude

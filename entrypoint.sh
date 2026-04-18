@@ -2,7 +2,7 @@
 set -e
 
 echo "══════════════════════════════════════════════════════════════"
-echo "🚀 Starting Claude Telegram Agent..."
+echo "🚀 Starting Claude Agent..."
 echo "══════════════════════════════════════════════════════════════"
 
 # ── 1. SSH key setup ──────────────────────────────────────────────────────────
@@ -145,24 +145,28 @@ os.chown(cfg_path, $(id -u agent), $(id -g agent))
     echo "✅ Workspace trust flags set in imported .claude.json"
 fi
 
-# ── 6. Launch Go Telegram bot ────────────────────────────────────────────────
+# ── 6. Launch bot ────────────────────────────────────────────────────────────
 echo ""
-echo "── [6/6] Launching Telegram bot ──"
+echo "── [6/6] Launching bot ──"
 
 TELEGRAM_TOKEN_VAL="${TELEGRAM_TOKEN:-}"
-if [ -z "$TELEGRAM_TOKEN_VAL" ]; then
-    echo "❌ TELEGRAM_TOKEN is not set — bot cannot start"
-    exit 1
-fi
-
 ALLOWED_CHAT_ID_VAL="${ALLOWED_CHAT_ID:-}"
-if [ -z "$ALLOWED_CHAT_ID_VAL" ]; then
-    echo "❌ ALLOWED_CHAT_ID is not set — bot cannot start"
-    exit 1
+
+if [ -n "$TELEGRAM_TOKEN_VAL" ] && [ -n "$ALLOWED_CHAT_ID_VAL" ]; then
+    echo "  Telegram: enabled (token: ****${TELEGRAM_TOKEN_VAL: -4}, chats: ${ALLOWED_CHAT_ID_VAL})"
+else
+    echo "  Telegram: disabled (TELEGRAM_TOKEN or ALLOWED_CHAT_ID not set)"
 fi
 
-echo "  TELEGRAM_TOKEN: ****${TELEGRAM_TOKEN_VAL: -4}"
-echo "  ALLOWED_CHAT_ID: ${ALLOWED_CHAT_ID_VAL}"
+SLACK_BOT_TOKEN_VAL="${SLACK_BOT_TOKEN:-}"
+SLACK_APP_TOKEN_VAL="${SLACK_APP_TOKEN:-}"
+SLACK_CHANNEL_ID_VAL="${SLACK_CHANNEL_ID:-}"
+
+if [ -n "$SLACK_BOT_TOKEN_VAL" ] && [ -n "$SLACK_APP_TOKEN_VAL" ]; then
+    echo "  Slack: enabled (channels: ${SLACK_CHANNEL_ID_VAL:-all})"
+else
+    echo "  Slack: disabled (SLACK_BOT_TOKEN or SLACK_APP_TOKEN not set)"
+fi
 
 cat > /tmp/run_bot.sh << RUNEOF
 #!/bin/bash
@@ -177,6 +181,9 @@ export ANTHROPIC_MODEL='${ANTHROPIC_MODEL:-}'
 export ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY:-}'
 export CLAUDE_CODE_SANDBOXED='${CLAUDE_CODE_SANDBOXED:-}'
 export GH_TOKEN='${GH_TOKEN:-}'
+export SLACK_BOT_TOKEN='${SLACK_BOT_TOKEN:-}'
+export SLACK_APP_TOKEN='${SLACK_APP_TOKEN:-}'
+export SLACK_CHANNEL_ID='${SLACK_CHANNEL_ID:-}'
 exec /usr/local/bin/claude-bot
 RUNEOF
 chmod +x /tmp/run_bot.sh

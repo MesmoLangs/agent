@@ -1,5 +1,5 @@
 ## Stage 1: Build Go Telegram bot
-FROM golang:1.23-alpine AS bot-builder
+FROM golang:1.25-alpine AS bot-builder
 WORKDIR /build
 COPY bot/ ./
 RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o claude-bot .

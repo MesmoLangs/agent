@@ -1,10 +1,12 @@
-# Claude Telegram Agent
+# Claude Agent
 
-A repo-agnostic Telegram bot that wraps the Claude Code CLI inside Docker. Send a message, Claude clones the repo it needs, implements changes, and pushes to GitHub.
+A repo-agnostic Telegram & Slack bot that wraps the Claude Code CLI inside Docker. Send a message, Claude clones the repo it needs, implements changes, and pushes to GitHub.
 
 ```
-You (Telegram) → Go Bot (Docker) → Claude Code CLI (Bedrock) → git push → GitHub
+You (Telegram / Slack) → Go Bot (Docker) → Claude Code CLI (Bedrock) → git push → GitHub
 ```
+
+Both transports are optional — set the env vars for the ones you want. At least one must be configured.
 
 ## Architecture
 
@@ -20,13 +22,14 @@ You (Telegram) → Go Bot (Docker) → Claude Code CLI (Bedrock) → git push �
 │                                                  │
 │  claude-bot (Go binary)                          │
 │    ├── long-polls Telegram for updates           │
-│    ├── registers bot commands via SetMyCommands   │
-│    ├── filters messages by ALLOWED_CHAT_ID       │
+│    ├── connects to Slack via Socket Mode         │
+│    ├── both transports share one Claude session  │
+│    ├── filters by allowed chat/channel IDs       │
 │    ├── sends typing indicator while processing   │
 │    ├── runs claude in stream-json mode           │
-│    ├── maintains session continuity              │
+│    ├── rejects concurrent messages with status   │
 │    ├── logs full request, response, and stderr   │
-│    └── splits long replies into 4000-char chunks │
+│    └── splits long replies into platform chunks  │
 │                                                  │
 │  /workspace (mounted volume)                     │
 │    └── Claude clones repos here on demand        │
@@ -53,9 +56,37 @@ When a message arrives:
 
 Session state is in-memory. `/new` (or `/reset`, `/clear`) resets it. Container restart also resets it.
 
+If `TELEGRAM_TOKEN` or `ALLOWED_CHAT_ID` is not set, the bot logs a message and skips Telegram.
+
+## Slack Integration
+
+The bot connects to Slack using Socket Mode (no public URL, no webhooks — same outbound-only pattern as Telegram).
+
+### Creating the Slack App
+
+1. Go to https://api.slack.com/apps → **Create New App** → **From scratch**
+2. Name it (e.g. "Claude Agent"), pick your workspace
+3. Left sidebar → **Socket Mode** → toggle **on** → create an app-level token (scope: `connections:write`) → copy the `xapp-...` token → this is `SLACK_APP_TOKEN`
+4. Left sidebar → **OAuth & Permissions** → add **Bot Token Scopes**:
+   - `chat:write`
+   - `channels:history`
+   - `channels:read`
+   - `app_mentions:read`
+5. Left sidebar → **Event Subscriptions** → toggle **on** → under **Subscribe to bot events** add:
+   - `message.channels`
+6. Click **Save Changes**
+7. Left sidebar → **Install App** → **Install to Workspace** → **Allow** → copy the `xoxb-...` token → this is `SLACK_BOT_TOKEN`
+8. In Slack, right-click the target channel → **View channel details** → copy the **Channel ID** (starts with `C`) → this is `SLACK_CHANNEL_ID`
+9. Invite the bot to the channel: `/invite @YourBotName`
+
+Optional — to use slash commands (`/new`, `/status`, `/help`):
+- Left sidebar → **Slash Commands** → create each one (any placeholder URL — Socket Mode intercepts them)
+
+If `SLACK_BOT_TOKEN` or `SLACK_APP_TOKEN` is not set, the bot logs a message and skips Slack.
+
 ### Bot Commands
 
-These appear in Telegram's "/" menu:
+These work on both Telegram and Slack:
 
 | Command   | Description                     |
 |-----------|---------------------------------|
@@ -63,7 +94,14 @@ These appear in Telegram's "/" menu:
 | `/status` | Show bot and session status     |
 | `/help`   | List available commands         |
 
-Hidden aliases that also work: `/reset`, `/clear`
+Hidden aliases (Telegram only): `/reset`, `/clear`
+
+### Busy Reply
+
+If Claude is already processing a message (from either platform), new messages get:
+> I'm currently working on: "<task>" — please wait.
+
+The message is not queued — send it again after the current task finishes.
 
 ## Claude Code Integration
 
@@ -81,8 +119,11 @@ A fallback `CLAUDE.md` is baked into the image with generic coding rules and con
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `TELEGRAM_TOKEN` | Yes | Telegram Bot API token from @BotFather |
-| `ALLOWED_CHAT_ID` | Yes | Comma-separated Telegram chat IDs allowed to use the bot |
+| `TELEGRAM_TOKEN` | No* | Telegram Bot API token from @BotFather |
+| `ALLOWED_CHAT_ID` | No* | Comma-separated Telegram chat IDs allowed to use the bot |
+| `SLACK_BOT_TOKEN` | No* | Slack bot token (`xoxb-...`) from OAuth & Permissions |
+| `SLACK_APP_TOKEN` | No* | Slack app-level token (`xapp-...`) from Socket Mode settings |
+| `SLACK_CHANNEL_ID` | No | Comma-separated Slack channel IDs allowed to use the bot |
 | `CLAUDE_CODE_USE_BEDROCK` | Yes | Set to `1` for AWS Bedrock |
 | `AWS_ACCESS_KEY_ID` | Yes | AWS credentials for Bedrock |
 | `AWS_SECRET_ACCESS_KEY` | Yes | AWS credentials for Bedrock |
@@ -90,6 +131,8 @@ A fallback `CLAUDE.md` is baked into the image with generic coding rules and con
 | `ANTHROPIC_MODEL` | Yes | Bedrock inference profile ID |
 | `CONTAINER_NAME` | No | Docker container name (default: `claude-agent`) |
 | `VOLUME_PREFIX` | No | Prefix for named volumes (default: `agent`) |
+
+\* At least one transport (Telegram or Slack) must be configured. Each transport requires its pair of tokens to be set.
 
 ### Host Mounts
 
