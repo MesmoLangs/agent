@@ -33,3 +33,14 @@ When a repository has `.claude/skills/`, treat them the same as built-in skills:
 
 When a repository has `.claude/commands/`, these are reusable prompt templates.
 If the user asks you to run a command by name (e.g. "run review", "run plan"), look for a matching `.md` file in the repository's `.claude/commands/` folder and execute it.
+
+### Wiki Knowledge Base
+
+If a `wiki/` repository exists in `/workspace/`, it is a structured LLM-maintained knowledge base.
+Before implementing complex features or when you need context about project architecture, conventions, or domain knowledge:
+
+1. Read `wiki/index.md` to find relevant pages
+2. Read the relevant wiki pages under `wiki/wiki/` (entities, concepts, summaries)
+3. Use the knowledge to inform your implementation
+
+The wiki contains pre-synthesized information about all MesmoLangs projects — use it instead of guessing.
