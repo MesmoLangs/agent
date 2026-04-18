@@ -76,30 +76,15 @@ chown -R agent:agent /home/agent/.ssh
 su - agent -c "git config --global --add safe.directory /workspace"
 echo "✅ Agent user permissions set"
 
-# ── 4. Clone / pull Git repos ─────────────────────────────────────────────────
+# ── 4. Workspace instructions ─────────────────────────────────────────────────
 echo ""
-echo "── [4/6] Initializing Git repositories ──"
-
-if [ -n "${GIT_REPOS:-}" ]; then
-    IFS=',' read -ra REPOS <<< "$GIT_REPOS"
-    for REPO_URL in "${REPOS[@]}"; do
-        REPO_URL=$(echo "$REPO_URL" | xargs)
-        REPO_NAME=$(basename "$REPO_URL" .git)
-        REPO_DIR="/workspace/$REPO_NAME"
-
-        if [ -d "$REPO_DIR/.git" ]; then
-            echo "  Pulling latest for $REPO_NAME..."
-            git -C "$REPO_DIR" pull --ff-only 2>&1 | sed 's/^/    /'
-        else
-            echo "  Cloning $REPO_NAME..."
-            git clone "$REPO_URL" "$REPO_DIR" 2>&1 | sed 's/^/    /'
-        fi
-        git config --global --add safe.directory "$REPO_DIR"
-    done
-    chown -R agent:agent /workspace
-    echo "✅ Git repositories initialized"
+echo "── [4/6] Setting up workspace instructions ──"
+if [ -f /opt/workspace-claude.md ]; then
+    cp /opt/workspace-claude.md /workspace/CLAUDE.md
+    chown agent:agent /workspace/CLAUDE.md
+    echo "✅ Workspace CLAUDE.md installed"
 else
-    echo "  GIT_REPOS not set, skipping"
+    echo "  No workspace CLAUDE.md found, skipping"
 fi
 
 # ── 5. Pre-configure Claude Code onboarding ───────────────────────────────────
@@ -191,6 +176,7 @@ export AWS_REGION='${AWS_REGION:-}'
 export ANTHROPIC_MODEL='${ANTHROPIC_MODEL:-}'
 export ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY:-}'
 export CLAUDE_CODE_SANDBOXED='${CLAUDE_CODE_SANDBOXED:-}'
+export GH_TOKEN='${GH_TOKEN:-}'
 exec /usr/local/bin/claude-bot
 RUNEOF
 chmod +x /tmp/run_bot.sh

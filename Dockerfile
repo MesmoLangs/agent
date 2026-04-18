@@ -19,6 +19,14 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs
 
+# ── GitHub CLI ────────────────────────────────────────────────────────────────
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+    apt-get update && apt-get install -y gh && \
+    rm -rf /var/lib/apt/lists/*
+
 # ── Non-root user (Claude CLI refuses root) ──────────────────────────────────
 RUN useradd -m -s /bin/bash agent && \
     mkdir -p /workspace /home/agent/.ssh && \
@@ -36,6 +44,9 @@ COPY --from=bot-builder /build/claude-bot /usr/local/bin/claude-bot
 
 # ── Workspace for repos ──────────────────────────────────────────────────────
 RUN mkdir -p /workspace
+
+# ── Global workspace instructions ────────────────────────────────────────────
+COPY CLAUDE.md /opt/workspace-claude.md
 
 # ── Entrypoint ───────────────────────────────────────────────────────────────
 COPY entrypoint.sh /entrypoint.sh
