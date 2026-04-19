@@ -131,49 +131,51 @@ A fallback `CLAUDE.md` is baked into the image with generic coding rules and con
 | `ANTHROPIC_MODEL` | Yes | Bedrock inference profile ID |
 | `CONTAINER_NAME` | No | Docker container name (default: `claude-agent`) |
 | `VOLUME_PREFIX` | No | Prefix for named volumes (default: `agent`) |
-| `GITHUB_APP_ID` | No** | GitHub App ID (from app settings page) |
-| `GITHUB_APP_PRIVATE_KEY` | No** | Base64-encoded GitHub App private key (PEM) |
+| `GITHUB_APP_ID` | Yes** | GitHub App ID (from app settings page) |
+| `GITHUB_APP_PRIVATE_KEY` | Yes** | Base64-encoded GitHub App private key (PEM) |
 | `GITHUB_APP_INSTALLATION_ID` | No | Installation ID (auto-discovered if omitted) |
-| `SSH_KEY_PATH` | No** | Path to SSH private key for GitHub access |
 
 \* At least one transport (Telegram or Slack) must be configured. Each transport requires its pair of tokens to be set.
 
-\*\* Choose one GitHub auth method: **GitHub App** (`GITHUB_APP_ID` + `GITHUB_APP_PRIVATE_KEY`) or **SSH key** (`SSH_KEY_PATH`). GitHub App is recommended — no SSH key mounting required.
+\*\* Required for GitHub access. The bot uses a GitHub App to authenticate — no SSH keys needed.
 
 ### GitHub Authentication
 
-Two options for authenticating with GitHub:
+#### GitHub App
 
-#### Option A: GitHub App (recommended)
+The bot authenticates with GitHub using a GitHub App because:
+- **No long-lived secrets** — instead of a static PAT or SSH key, the bot mints short-lived installation tokens (1 hour) on demand using a private key that never leaves your machine.
+- **Fine-grained permissions** — you grant only `Contents: Read & write` on exactly the repos you choose, nothing else.
+- **No SSH key mounting** — no need to mount a private key file into the container or manage `~/.ssh` permissions.
+- **Automatic rotation** — tokens are cached and refreshed transparently; if a token expires mid-task, the credential helper fetches a new one.
 
 No SSH keys needed. The bot generates short-lived installation tokens automatically.
 
 1. Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**
 2. Set a name (e.g. "Claude Agent")
-3. Under **Repository permissions**, grant **Contents: Read & write**
-4. Under **Private keys**, click **Generate a private key** — a `.pem` file downloads
-5. Note the **App ID** from the app's settings page
-6. Click **Install App** → install on your account/org, selecting which repos to grant access
-7. Base64-encode the private key:
-   ```bash
-   base64 -i your-app-name.pem | tr -d '\n'
-   ```
-8. Set in your `.env`:
-   ```
-   GITHUB_APP_ID=123456
-   GITHUB_APP_PRIVATE_KEY=LS0tLS1CRUdJTi...
-   ```
+3. Set **Homepage URL** to any placeholder (e.g. `https://example.com`)
+4. Under **Webhook**, uncheck **Active** (not needed)
+5. Under **Repository permissions**, grant **Contents: Read & write**
+6. Under **Where can this GitHub App be installed?**, select **Only on this account**
+7. Click **Create GitHub App**
+8. On the app settings page, note the **App ID**
+9. Scroll down to **Private keys** → click **Generate a private key** — a `.pem` file downloads
+10. Click **Install App** → install on your account/org → select which repos to grant access
+11. Base64-encode the private key:
+    ```bash
+    base64 -i your-app-name.pem | tr -d '\n'
+    ```
+12. Set in your `.env`:
+    ```
+    GITHUB_APP_ID=123456
+    GITHUB_APP_PRIVATE_KEY=LS0tLS1CRUdJTi...
+    ```
+
+**GitHub App settings note — "Expire user authorization tokens":** Leave this **unchecked**. This setting only applies to OAuth user tokens (used when users log in via "Sign in with GitHub"). This bot uses *installation tokens*, not user OAuth tokens, so the checkbox has no effect on it. Leaving it off avoids confusion.
 
 The bot auto-discovers the installation ID. If the app is installed on multiple orgs, set `GITHUB_APP_INSTALLATION_ID` explicitly.
 
 Tokens are cached for 30 minutes and auto-refreshed on demand (they last 1 hour). All SSH-style git URLs (`git@github.com:...`) are automatically rewritten to HTTPS.
-
-#### Option B: SSH key
-
-Mount your SSH private key into the container:
-```
-SSH_KEY_PATH=~/.ssh/github
-```
 
 ### Host Mounts
 
@@ -181,7 +183,7 @@ The container imports your local settings (read-only):
 
 | Host Path | Container Path | Purpose |
 |-----------|---------------|---------|
-| `SSH_KEY_PATH` | `/root/.ssh/id_rsa` | SSH key for GitHub access (Option B only) |
+
 | `~/.gitconfig` | `/host-settings/.gitconfig` | Git identity (name, email) |
 | `~/.claude.json` | `/host-settings/.claude.json` | Claude global config (onboarding, API) |
 | `~/.claude/settings.json` | `/host-settings/claude-settings.json` | Claude settings (theme, permissions) |
@@ -210,5 +212,4 @@ Clone git@github.com:user/repo.git and fix the typo in the login screen title
 Add a new endpoint GET /api/health that returns server version and uptime
 ```
 
-- The SSH key only has access to repos you explicitly added it to
 - Claude uses the cloned project's own CLAUDE.md and .claude/commands/ for repo-specific conventions

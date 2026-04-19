@@ -43,4 +43,4 @@ Before implementing complex features or when you need context about project arch
 2. Read the relevant wiki pages under `wiki/wiki/` (entities, concepts, summaries)
 3. Use the knowledge to inform your implementation
 
-The wiki contains pre-synthesized information about all MesmoLangs projects — use it instead of guessing.
+The wiki contains pre-synthesized information about all projects — use it instead of guessing.
