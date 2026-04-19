@@ -24,6 +24,11 @@ services:
       # ── GitHub CLI ────────────────────────────────────────────────────────
       - GH_TOKEN=${GH_TOKEN}
 
+      # ── GitHub App (alternative to SSH key) ───────────────────────────────
+      - GITHUB_APP_ID=${GITHUB_APP_ID:-}
+      - GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-}
+      - GITHUB_APP_INSTALLATION_ID=${GITHUB_APP_INSTALLATION_ID:-}
+
       # ── Slack (optional) ──────────────────────────────────────────────────
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
       - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
@@ -32,7 +37,7 @@ services:
     volumes:
       - workspace:/workspace
       - claude-memory:/home/agent/.claude
-      - ${SSH_KEY_PATH:-~/.ssh/github}:/root/.ssh/id_rsa:ro
+      - ${SSH_KEY_PATH:-/dev/null}:/root/.ssh/id_rsa:ro
       - ~/.gitconfig:/host-settings/.gitconfig:ro
       - ~/.claude.json:/host-settings/.claude.json:ro
       - ~/.claude/settings.json:/host-settings/claude-settings.json:ro

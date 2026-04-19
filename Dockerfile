@@ -1,8 +1,12 @@
-## Stage 1: Build Go Telegram bot
+## Stage 1: Build Go binaries
 FROM golang:1.25-alpine AS bot-builder
-WORKDIR /build
+WORKDIR /build/bot
 COPY bot/ ./
 RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o claude-bot .
+
+WORKDIR /build/credential-helper
+COPY credential-helper/ ./
+RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o git-credential-github-app .
 
 ## Stage 2: Runtime
 FROM ubuntu:22.04
@@ -39,8 +43,9 @@ RUN su - agent -c "curl -fsSL https://claude.ai/install.sh | bash" && \
 # ── Git safe directory ────────────────────────────────────────────────────
 RUN git config --global --add safe.directory /workspace
 
-# ── Go Telegram bot binary ───────────────────────────────────────────────────
-COPY --from=bot-builder /build/claude-bot /usr/local/bin/claude-bot
+# ── Go binaries ──────────────────────────────────────────────────────────────
+COPY --from=bot-builder /build/bot/claude-bot /usr/local/bin/claude-bot
+COPY --from=bot-builder /build/credential-helper/git-credential-github-app /usr/local/bin/git-credential-github-app
 
 # ── Workspace for repos ──────────────────────────────────────────────────────
 RUN mkdir -p /workspace

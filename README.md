@@ -131,8 +131,49 @@ A fallback `CLAUDE.md` is baked into the image with generic coding rules and con
 | `ANTHROPIC_MODEL` | Yes | Bedrock inference profile ID |
 | `CONTAINER_NAME` | No | Docker container name (default: `claude-agent`) |
 | `VOLUME_PREFIX` | No | Prefix for named volumes (default: `agent`) |
+| `GITHUB_APP_ID` | No** | GitHub App ID (from app settings page) |
+| `GITHUB_APP_PRIVATE_KEY` | No** | Base64-encoded GitHub App private key (PEM) |
+| `GITHUB_APP_INSTALLATION_ID` | No | Installation ID (auto-discovered if omitted) |
+| `SSH_KEY_PATH` | No** | Path to SSH private key for GitHub access |
 
 \* At least one transport (Telegram or Slack) must be configured. Each transport requires its pair of tokens to be set.
+
+\*\* Choose one GitHub auth method: **GitHub App** (`GITHUB_APP_ID` + `GITHUB_APP_PRIVATE_KEY`) or **SSH key** (`SSH_KEY_PATH`). GitHub App is recommended — no SSH key mounting required.
+
+### GitHub Authentication
+
+Two options for authenticating with GitHub:
+
+#### Option A: GitHub App (recommended)
+
+No SSH keys needed. The bot generates short-lived installation tokens automatically.
+
+1. Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**
+2. Set a name (e.g. "Claude Agent")
+3. Under **Repository permissions**, grant **Contents: Read & write**
+4. Under **Private keys**, click **Generate a private key** — a `.pem` file downloads
+5. Note the **App ID** from the app's settings page
+6. Click **Install App** → install on your account/org, selecting which repos to grant access
+7. Base64-encode the private key:
+   ```bash
+   base64 -i your-app-name.pem | tr -d '\n'
+   ```
+8. Set in your `.env`:
+   ```
+   GITHUB_APP_ID=123456
+   GITHUB_APP_PRIVATE_KEY=LS0tLS1CRUdJTi...
+   ```
+
+The bot auto-discovers the installation ID. If the app is installed on multiple orgs, set `GITHUB_APP_INSTALLATION_ID` explicitly.
+
+Tokens are cached for 30 minutes and auto-refreshed on demand (they last 1 hour). All SSH-style git URLs (`git@github.com:...`) are automatically rewritten to HTTPS.
+
+#### Option B: SSH key
+
+Mount your SSH private key into the container:
+```
+SSH_KEY_PATH=~/.ssh/github
+```
 
 ### Host Mounts
 
@@ -140,7 +181,7 @@ The container imports your local settings (read-only):
 
 | Host Path | Container Path | Purpose |
 |-----------|---------------|---------|
-| `~/.ssh/github` | `/root/.ssh/id_rsa` | SSH key for GitHub access |
+| `SSH_KEY_PATH` | `/root/.ssh/id_rsa` | SSH key for GitHub access (Option B only) |
 | `~/.gitconfig` | `/host-settings/.gitconfig` | Git identity (name, email) |
 | `~/.claude.json` | `/host-settings/.claude.json` | Claude global config (onboarding, API) |
 | `~/.claude/settings.json` | `/host-settings/claude-settings.json` | Claude settings (theme, permissions) |
