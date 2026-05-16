@@ -42,10 +42,18 @@ services:
       - ~/.claude.json:/host-settings/.claude.json:ro
       - ~/.claude/settings.json:/host-settings/claude-settings.json:ro
 
-    # No ports needed — bot uses outbound polling only
+    # No ports needed — bot uses outbound polling only.
+    # Joins the shared `mesmo-net` so it can hit the API services by name
+    # if needed; harmless when running standalone.
+    networks: [mesmo-net]
 
 volumes:
   workspace:
     name: ${AGENT_NAME:-claude-agent}-workspace
   claude-memory:
     name: ${AGENT_NAME:-claude-agent}-claude-memory
+
+networks:
+  mesmo-net:
+    name: mesmo-net
+    external: true
