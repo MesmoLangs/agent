@@ -7,32 +7,7 @@ services:
     restart: unless-stopped
     stdin_open: true
     tty: true
-
-    environment:
-      # ── Telegram ──────────────────────────────────────────────────────────
-      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-      - ALLOWED_CHAT_ID=${ALLOWED_CHAT_ID}
-
-      # ── AWS Bedrock (for Claude Code) ─────────────────────────────────────
-      - CLAUDE_CODE_USE_BEDROCK=1
-      - CLAUDE_CODE_SANDBOXED=1
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION:-us-east-1}
-      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL}
-
-      # ── GitHub CLI ────────────────────────────────────────────────────────
-      - GH_TOKEN=${GH_TOKEN}
-
-      # ── GitHub App (alternative to SSH key) ───────────────────────────────
-      - GITHUB_APP_ID=${GITHUB_APP_ID:-}
-      - GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-}
-      - GITHUB_APP_INSTALLATION_ID=${GITHUB_APP_INSTALLATION_ID:-}
-
-      # ── Slack (optional) ──────────────────────────────────────────────────
-      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
-      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
-      - SLACK_CHANNEL_ID=${SLACK_CHANNEL_ID:-}
+    env_file: .env
 
     volumes:
       - workspace:/workspace
