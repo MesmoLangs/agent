@@ -118,6 +118,11 @@ if [ "$GIT_AUTH_MODE" = "github-app" ]; then
     GH_REAL=$(command -v gh)
     cat > /usr/local/bin/gh-app-wrapper << GHEOF
 #!/bin/bash
+# Prefer GH_TOKEN (PAT) from environment — it has broader org-level access.
+# Fall back to GitHub App installation token for git-level operations.
+if [ -n "\${GH_TOKEN:-}" ]; then
+    exec ${GH_REAL} "\$@"
+fi
 token=\$(/usr/local/bin/git-credential-github-app token 2>/dev/null)
 if [ -n "\$token" ]; then
     GH_TOKEN="\$token" exec ${GH_REAL} "\$@"
