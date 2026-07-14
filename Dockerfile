@@ -31,6 +31,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     apt-get update && apt-get install -y gh && \
     rm -rf /var/lib/apt/lists/*
 
+    
 # ── Non-root user (Claude CLI refuses root) ──────────────────────────────────
 RUN useradd -m -s /bin/bash agent && \
     mkdir -p /workspace /home/agent/.ssh && \
